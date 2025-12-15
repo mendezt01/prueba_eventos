@@ -1,3 +1,7 @@
+@app.post("/events")
+async def receive_event(request: Request):
+    print("TABLE_ID_RUNTIME =", TABLE_ID, flush=True)
+    
 from fastapi import FastAPI, Request, HTTPException
 from google.cloud import bigquery
 from datetime import datetime, timezone
