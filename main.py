@@ -7,7 +7,7 @@ app = FastAPI()
 # Ajusta estos 2 valores si tu dataset/tabla tienen otro nombre
 BQ_DATASET = "events_raw"
 BQ_TABLE = "solace_events"
-TABLE_ID = f"{BQ_DATASET}.{BQ_TABLE}"
+TABLE_ID = f"sincere-amulet-481314-u5.solace_events"
 
 bq_client = bigquery.Client()
 
