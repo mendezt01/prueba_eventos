@@ -1,3 +1,5 @@
+import json
+
 from fastapi import FastAPI, Request, HTTPException
 from google.cloud import bigquery
 from datetime import datetime, timezone
@@ -32,14 +34,15 @@ async def receive_event(request: Request):
                 raise HTTPException(status_code=400, detail=f"Missing field: {field}")
 
         row = {
-            "event_id": event["event_id"],
-            "event_type": event["event_type"],
-            "event_source": event.get("event_source", "solace"),
-            "event_time": event["event_time"],
-            "spec_version": event.get("spec_version", "1.0"),
-            "payload": event["payload"],
-            "ingestion_time": datetime.now(timezone.utc).isoformat(),
-        }
+    "event_id": event["event_id"],
+    "event_type": event["event_type"],
+    "event_source": event.get("event_source", "solace"),
+    "event_time": event["event_time"],
+    "spec_version": event.get("spec_version", "1.0"),
+    "payload": json.dumps(event["payload"]),  # <-- CLAVE: convertir a string JSON
+    "ingestion_time": datetime.now(timezone.utc).isoformat(),
+}
+
 
         client = get_bq_client()
         errors = client.insert_rows_json(TABLE_ID, [row])
