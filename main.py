@@ -1,19 +1,18 @@
 from fastapi import FastAPI, Request, HTTPException
 from google.cloud import bigquery
 from datetime import datetime, timezone
+import os
 
 app = FastAPI()
 
-# ===== CONFIGURACIÓN FIJA =====
 PROJECT_ID = "sincere-amulet-481314-u5"
 DATASET_ID = "events_raw"
 TABLE_NAME = "solace_events"
-
 TABLE_ID = f"{PROJECT_ID}.{DATASET_ID}.{TABLE_NAME}"
 
-bq_client = bigquery.Client(project=PROJECT_ID)
-
-# ===== ENDPOINTS BÁSICOS =====
+def get_bq_client() -> bigquery.Client:
+    # Crear el cliente "on-demand" evita fallas en startup/import-time
+    return bigquery.Client(project=PROJECT_ID)
 
 @app.get("/")
 def root():
@@ -21,51 +20,36 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
-
-# ===== ENDPOINT DE EVENTOS =====
+    return {"status": "ok", "revision": os.getenv("K_REVISION", "unknown")}
 
 @app.post("/events")
 async def receive_event(request: Request):
     try:
         event = await request.json()
 
-        # Validación mínima
         for field in ["event_id", "event_type", "event_time", "payload"]:
             if field not in event:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Missing field: {field}"
-                )
+                raise HTTPException(status_code=400, detail=f"Missing field: {field}")
 
         row = {
             "event_id": event["event_id"],
             "event_type": event["event_type"],
             "event_source": event.get("event_source", "solace"),
-            "event_time": event["event_time"],  # ISO 8601
+            "event_time": event["event_time"],
             "spec_version": event.get("spec_version", "1.0"),
-            "payload": event["payload"],        # JSON
+            "payload": event["payload"],
             "ingestion_time": datetime.now(timezone.utc).isoformat(),
         }
 
-        errors = bq_client.insert_rows_json(
-            TABLE_ID,
-            [row]
-        )
+        client = get_bq_client()
+        errors = client.insert_rows_json(TABLE_ID, [row])
 
         if errors:
-            raise HTTPException(
-                status_code=500,
-                detail=f"BigQuery insert errors: {errors}"
-            )
+            raise HTTPException(status_code=500, detail=f"BigQuery insert errors: {errors}")
 
         return {"status": "accepted"}
 
     except HTTPException:
         raise
-
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=500, detail=str(e))
