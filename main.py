@@ -33,15 +33,16 @@ async def receive_event(request: Request):
             if field not in event:
                 raise HTTPException(status_code=400, detail=f"Missing field: {field}")
 
-        row = {
+    row = {
     "event_id": event["event_id"],
     "event_type": event["event_type"],
     "event_source": event.get("event_source", "solace"),
     "event_time": event["event_time"],
     "spec_version": event.get("spec_version", "1.0"),
-    "payload": json.dumps(event["payload"]),  # <-- CLAVE: convertir a string JSON
+    "payload": json.dumps(event["payload"]),  # STRING con JSON
     "ingestion_time": datetime.now(timezone.utc).isoformat(),
 }
+
 
 
         client = get_bq_client()
